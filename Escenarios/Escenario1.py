@@ -1,51 +1,73 @@
-"""
-Codigo para obtencion de datos del escenario 1 altura de dron DJI Tello
-"""
-from djitellopy import Tello
+import tellopy
 import time
+import pandas as pd
+from datetime import datetime
 
-if __name__ == "__main__":
-    drone = Tello()
-    drone.connect()
-    print(f"Batería inicial: {drone.get_battery()}%")
+def main():
+    drone = None
+    battery_data = []
 
-    alturas = [2, 4, 6]  # alturas a las que quieres elevar el dron en metros
-    consumo = []
-    posicion = []
+    try:
+        # Crear una instancia del dron
+        drone = tellopy.Tello()
 
-    # Abrir archivo para escribir los resultados
-    with open("resultados_altura_y_consumo.txt", "w") as file:
-        file.write("Altura (m), Consumo de batería (%), Posición actual (cm)\n")
+        # Conectar al dron
+        drone.connect()
+        drone.wait_for_connection(60.0)
 
-        for altura in alturas:
-            drone.takeoff()
-            drone.move_up(altura * 100)  # La altura debe especificarse en cm en send_rc_control
-            time.sleep(5)  # Tiempo para estabilizar y medir
+        # Despegar el dron
+        drone.takeoff()
 
-            # Medir consumo y posición después de subir
-            consumo_actual = drone.get_battery()
-            posicion_actual = drone.get_height()
-            consumo.append(consumo_actual)
-            posicion.append(posicion_actual)
+        # Suscribirse a eventos del dron para obtener datos de vuelo
+        drone.subscribe(drone.EVENT_FLIGHT_DATA, lambda event, sender, data, **args: handle_flight_data(event, sender, data, battery_data))
 
-            # Escribir los resultados después de subir
-            file.write(f"{altura}, {consumo_actual}, {posicion_actual}\n")
+        # Subir a 20 metros
+        for meter in range(1, 60):
+            drone.up(50)  # Subir a una velocidad de 20 cm/s
+            time.sleep(1)  # Esperar 1 segundo
+            drone.up(0)  # Detener el ascenso
+            time.sleep(1)  # Esperar 1 segundo mientras se obtiene el estado de la batería
+            
+            # Marcar cada 5 metros
+            if meter % 5 == 0:
+                print(f"Subiendo - Altura alcanzada: {meter} metros")
 
-            drone.send_rc_control(0, 0, 0, 0)  # Estabilizar el dron en el aire
-            time.sleep(5)  # Tiempo para estabilizar y medir
+        # Bajar a 0 metros
+        for meter in range(1, 60):
+            drone.down(50)  # Bajar a una velocidad de 20 cm/s
+            time.sleep(1)  # Esperar 1 segundo
+            drone.down(0)  # Detener el descenso
+            time.sleep(1)  # Esperar 1 segundo mientras se obtiene el estado de la batería
+            
+            # Marcar cada 5 metros
+            if meter % 5 == 0:
+                print(f"Bajando - Altura restante: {20 - meter} metros")
 
-            # Medir consumo y posición al estabilizar
-            consumo_actual = drone.get_battery()
-            posicion_actual = drone.get_height()
-            consumo.append(consumo_actual)
-            posicion.append(posicion_actual)
+        # Aterrizar el dron
+        drone.land()
 
-            # Escribir los resultados al estabilizar
-            file.write(f"{altura}, {consumo_actual}, {posicion_actual}\n")
+    except Exception as e:
+        print(f"Ha ocurrido un error: {e}")
+    finally:
+        # Verificar si la instancia de drone fue creada antes de llamar a quit
+        if drone:
+            drone.quit()
+        
+        # Guardar los datos de la batería en un archivo Excel
+        save_battery_data(battery_data)
 
-            drone.land()
-            time.sleep(2)  # Pausa entre cada ciclo de despegue y aterrizaje
+def handle_flight_data(event, sender, data, battery_data):
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    battery_data.append({
+        'Time': current_time,
+        'Battery': data.battery_percentage
+    })
+    print(f"{current_time} - Estado de la batería: {data.battery_percentage}%")
 
-    print("Prueba completada y datos guardados.")
+def save_battery_data(battery_data):
+    df = pd.DataFrame(battery_data)
+    df.to_excel('battery_data.xlsx', index=False)
+    print("Datos de batería guardados en battery_data.xlsx")
 
-    
+if __name__ == '__main__':
+    main()

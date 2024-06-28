@@ -1,42 +1,97 @@
-"""
-Codigo para obtencion de datos del escenario 2 desplazamiento horizotal de dron DJI Tello
-"""
-from djitellopy import Tello
+import tellopy
 import time
-if __name__ == "__main__":
-    drone = Tello()
-    drone.connect()
-    print(f"Batería inicial: {drone.get_battery()}%")
-    distancias = [2, 4, 6]  # distancias a las que quieres desplazar el dron en metros
-    consumo = []
-    posicion = []
-    # Abrir archivo para escribir los resultados
-    with open("resultados_distancia_y_consumo.txt", "w") as file:
-        file.write("Distancia (m), Consumo de batería (%), Posición actual (cm)\n")
-        for distancia in distancias:
-            drone.takeoff()
-            drone.move_up(120)
-            drone.move_left(distancia * 100)  # La distancia debe especificarse en cm en send_rc_control
-            time.sleep(5)  # Tiempo para estabilizar y medir
-            # Medir consumo y posición después de desplazar
-            consumo_actual = drone.get_battery()
-            posicion_actual = drone.get_distance_tof()
-            consumo.append(consumo_actual)
-            posicion.append(posicion_actual)
-            # Escribir los resultados después de desplazar
-            file.write(f"{distancia}, {consumo_actual}, {posicion_actual}\n")
-            # Mover el dron de regreso
-            drone.move_backward(distancia)
-            time.sleep(5)  # Tiempo para estabilizar y medir
-            # Medir consumo y posición después de regresar
-            consumo_actual = drone.get_battery()
-            posicion_actual = drone.get_height()
-            consumo.append(consumo_actual)
-            posicion.append(posicion_actual)
-            # Escribir los resultados después de moverse hacia atrás
-            file.write(f", {posicion_actual}\n")
-            drone.land()
-            time.sleep(2)
-    print("Prueba completada y datos guardados.")
+import pandas as pd
+from datetime import datetime
 
-    
+def main():
+    drone = None
+    battery_data = []
+
+    try:
+        # Crear una instancia del dron
+        drone = tellopy.Tello()
+
+        # Conectar al dron
+        drone.connect()
+        drone.wait_for_connection(60.0)
+
+        # Despegar el dron
+        drone.takeoff()
+
+        # Subir 2 metros
+        drone.up(70)  # Ajustar velocidad de ascenso según sea necesario
+        time.sleep(2)  # Esperar 2 segundos
+        drone.up(0)  # Detener el ascenso
+
+        # Suscribirse a eventos del dron para obtener datos de vuelo
+        drone.subscribe(drone.EVENT_FLIGHT_DATA, lambda event, sender, data, **args: handle_flight_data(event, sender, data, battery_data))
+
+        # Mantener la altura durante 1 segundo y tomar el primer dato de batería
+        time.sleep(1)
+        mark_battery('Manteniendo altura a 2m', battery_data)
+
+        # Iniciar movimiento a la izquierda (20 metros)
+        mark_battery('Inicia movimiento a la izquierda (20m)', battery_data)
+        for _ in range(20):
+            drone.left(50)  # Ajustar velocidad según sea necesario
+            time.sleep(1)  # Moverse durante 1 metro
+            drone.left(0)  # Detener el movimiento
+            mark_battery('Movimiento a la izquierda (1m)', battery_data)
+
+        # Mantener la posición durante 1 segundo
+        time.sleep(1)
+
+        # Iniciar movimiento a la derecha (20 metros)
+        mark_battery('Inicia movimiento a la derecha (20m)', battery_data)
+        for _ in range(20):
+            drone.right(50)  # Ajustar velocidad según sea necesario
+            time.sleep(1)  # Moverse durante 1 metro
+            drone.right(0)  # Detener el movimiento
+            mark_battery('Movimiento a la derecha (1m)', battery_data)
+
+        # Mantener la posición durante 1 segundo
+        time.sleep(1)
+
+        # Iniciar el descenso
+        mark_battery('Inicia descenso', battery_data)
+        drone.down(50)  # Ajustar velocidad de descenso según sea necesario
+        time.sleep(2)  # Esperar a que descienda
+        drone.down(0)  # Detener el descenso
+
+        # Aterrizar el dron
+        drone.land()
+
+    except Exception as e:
+        print(f"Ha ocurrido un error: {e}")
+    finally:
+        # Verificar si la instancia de drone fue creada antes de llamar a quit
+        if drone:
+            drone.quit()
+        
+        # Guardar los datos de la batería en un archivo Excel
+        save_battery_data(battery_data)
+
+def handle_flight_data(event, sender, data, battery_data):
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    battery_data.append({
+        'Time': current_time,
+        'Battery': round(data.battery_percentage, 2)  # Guardar con dos decimales
+    })
+    print(f"{current_time} - Estado de la batería: {round(data.battery_percentage, 2)}%")
+
+def mark_battery(event, battery_data):
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    battery_data.append({
+        'Time': current_time,
+        'Event': event,
+        'Battery': round(battery_data[-1]['Battery'], 2) if battery_data else 'Unknown'
+    })
+    print(f"{current_time} - {event} - Estado de la batería: {round(battery_data[-1]['Battery'], 2)}%")
+
+def save_battery_data(battery_data):
+    df = pd.DataFrame(battery_data)
+    df.to_excel('battery_data.xlsx', index=False)
+    print("Datos de batería guardados en battery_data.xlsx")
+
+if __name__ == '__main__':
+    main()
