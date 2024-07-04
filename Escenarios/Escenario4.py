@@ -28,7 +28,7 @@ def main():
 
         # Mantener la altura durante 1 minuto
         start_time = time.time()
-        while time.time() - start_time < 120:
+        while time.time() - start_time < 300:
             time.sleep(2)
 
         # Comenzar el descenso a una velocidad de 40 m/h (aproximadamente 11.1 cm/s)

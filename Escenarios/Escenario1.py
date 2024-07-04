@@ -21,9 +21,9 @@ def main():
         # Suscribirse a eventos del dron para obtener datos de vuelo
         drone.subscribe(drone.EVENT_FLIGHT_DATA, lambda event, sender, data, **args: handle_flight_data(event, sender, data, battery_data))
 
-        # Subir a 20 metros
-        for meter in range(1, 60):
-            drone.up(50)  # Subir a una velocidad de 20 cm/s
+        # Subir a 10 metros
+        for meter in range(1, 12):
+            drone.up(50)  # Subir a una velocidad de 50 cm/s
             time.sleep(1)  # Esperar 1 segundo
             drone.up(0)  # Detener el ascenso
             time.sleep(1)  # Esperar 1 segundo mientras se obtiene el estado de la batería
@@ -33,7 +33,7 @@ def main():
                 print(f"Subiendo - Altura alcanzada: {meter} metros")
 
         # Bajar a 0 metros
-        for meter in range(1, 60):
+        for meter in range(1, 12):
             drone.down(50)  # Bajar a una velocidad de 20 cm/s
             time.sleep(1)  # Esperar 1 segundo
             drone.down(0)  # Detener el descenso
@@ -60,13 +60,14 @@ def handle_flight_data(event, sender, data, battery_data):
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     battery_data.append({
         'Time': current_time,
-        'Battery': data.battery_percentage
+        'Battery': data.battery_percentage,
+        'Height': data.height
     })
     print(f"{current_time} - Estado de la batería: {data.battery_percentage}%")
 
 def save_battery_data(battery_data):
     df = pd.DataFrame(battery_data)
-    df.to_excel('battery_data.xlsx', index=False)
+    df.to_excel('battery_data25g6malto.xlsx', index=False)
     print("Datos de batería guardados en battery_data.xlsx")
 
 if __name__ == '__main__':
