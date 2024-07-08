@@ -19,7 +19,7 @@ def main():
         drone.takeoff()
 
         # Subir 2 metros
-        drone.up(70)  # Ajustar velocidad de ascenso según sea necesario
+        drone.up(50)  # Ajustar velocidad de ascenso según sea necesario
         time.sleep(2)  # Esperar 2 segundos
         drone.up(0)  # Detener el ascenso
 
@@ -32,7 +32,7 @@ def main():
 
         # Iniciar movimiento a la izquierda (20 metros)
         mark_battery('Inicia movimiento a la izquierda (20m)', battery_data)
-        for _ in range(20):
+        for _ in range(10):
             drone.left(50)  # Ajustar velocidad según sea necesario
             time.sleep(1)  # Moverse durante 1 metro
             drone.left(0)  # Detener el movimiento
@@ -43,7 +43,7 @@ def main():
 
         # Iniciar movimiento a la derecha (20 metros)
         mark_battery('Inicia movimiento a la derecha (20m)', battery_data)
-        for _ in range(20):
+        for _ in range(10):
             drone.right(50)  # Ajustar velocidad según sea necesario
             time.sleep(1)  # Moverse durante 1 metro
             drone.right(0)  # Detener el movimiento
@@ -75,7 +75,7 @@ def handle_flight_data(event, sender, data, battery_data):
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     battery_data.append({
         'Time': current_time,
-        'Battery': round(data.battery_percentage, 2)  # Guardar con dos decimales
+        'Battery': data.battery_percentage  # Guardar con dos decimale
     })
     print(f"{current_time} - Estado de la batería: {round(data.battery_percentage, 2)}%")
 
@@ -90,7 +90,7 @@ def mark_battery(event, battery_data):
 
 def save_battery_data(battery_data):
     df = pd.DataFrame(battery_data)
-    df.to_excel('battery_data.xlsx', index=False)
+    df.to_excel('battery_data15glateral.xlsx', index=False)
     print("Datos de batería guardados en battery_data.xlsx")
 
 if __name__ == '__main__':
