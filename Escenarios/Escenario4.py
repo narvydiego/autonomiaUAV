@@ -18,33 +18,59 @@ def main():
         # Despegar el dron
         drone.takeoff()
 
-        # Volar a 1 metro de altura
-        drone.up(50)  # Subir
-        time.sleep(8)  # Esperar 2 segundos
+        # Subir 2 metros
+        drone.up(50)  # Ajustar velocidad de ascenso según sea necesario
+        time.sleep(2)  # Esperar 2 segundos
         drone.up(0)  # Detener el ascenso
 
         # Suscribirse a eventos del dron para obtener datos de vuelo
         drone.subscribe(drone.EVENT_FLIGHT_DATA, lambda event, sender, data, **args: handle_flight_data(event, sender, data, battery_data))
 
-        # Mantener la altura durante 1 minuto
-        start_time = time.time()
-        while time.time() - start_time < 300:
-            time.sleep(2)
+        # Mantener la altura durante 1 segundo y tomar el primer dato de batería
+        time.sleep(1)
+        mark_battery('Manteniendo altura a 1m', battery_data)
 
-        # Comenzar el descenso a una velocidad de 40 m/h (aproximadamente 11.1 cm/s)
-        drone.down(11)
-        descend_start_time = time.time()
+        # Iniciar movimiento a la izquierda
+        mark_battery('Inicia movimiento adelante(1m)', battery_data)
+        drone.forward(50)  # Ajustar velocidad según sea necesario
+        time.sleep(1)  # Moverse durante 1 metro
+        drone.forward(0)  # Detener el movimiento
+        mark_battery('Movimiento adelante', battery_data)
 
-        # Verificar la batería cada 2 segundos mientras desciende
-        while True:
-            current_time = time.time()
-            elapsed_time = current_time - descend_start_time
-            if elapsed_time > 10:  # Volar por 10 segundos antes de aterrizar
-                break
-            time.sleep(2)
+        time.sleep(1)
+        mark_battery('Inicia movimiento derecha(1m)', battery_data)
+        drone.right(50)  # Ajustar velocidad según sea necesario
+        time.sleep(1)  # Moverse durante 1 metro
+        drone.right(0)  # Detener el movimiento
+        mark_battery('Movimiento derecha', battery_data)
 
-        # Detener el descenso
-        drone.down(0)
+        # Mantener la posición durante 1 segundo
+        time.sleep(1)
+        # Iniciar movimiento a la derecha (20 metros)
+        mark_battery('Inicia movimiento atras(1m)', battery_data)
+        drone.backward(50)  # Ajustar velocidad según sea necesario
+        time.sleep(1)  # Moverse durante 1 metro
+        drone.backward(0)  # Detener el movimiento
+        mark_battery('Movimiento atras', battery_data)
+
+        # Mantener la posición durante 1 segundo
+        time.sleep(1)
+
+        mark_battery('Inicia movimiento izquierda(1m)', battery_data)
+        drone.left(50)  # Ajustar velocidad según sea necesario
+        time.sleep(1)  # Moverse durante 1 metro
+        drone.left(0)  # Detener el movimiento
+        mark_battery('Movimiento izquierda', battery_data)
+
+        mark_battery('Manteniendo altura a 1m', battery_data)
+        # Mantener la posición durante 1 segundo
+        time.sleep(1)
+
+        # Iniciar el descenso
+        mark_battery('Inicia descenso', battery_data)
+        drone.down(50)  # Ajustar velocidad de descenso según sea necesario
+        time.sleep(2)  # Esperar a que descienda
+        drone.down(0)  # Detener el descenso
 
         # Aterrizar el dron
         drone.land()
@@ -63,9 +89,18 @@ def handle_flight_data(event, sender, data, battery_data):
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     battery_data.append({
         'Time': current_time,
-        'Battery': data.battery_percentage
+        'Battery': round(data.battery_percentage, 2)  # Guardar con dos decimales
     })
-    print(f"{current_time} - Estado de la batería: {data.battery_percentage}%")
+    print(f"{current_time} - Estado de la batería: {round(data.battery_percentage, 2)}%")
+
+def mark_battery(event, battery_data):
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    battery_data.append({
+        'Time': current_time,
+        'Event': event,
+        'Battery': round(battery_data[-1]['Battery'], 2) if battery_data else 'Unknown'
+    })
+    print(f"{current_time} - {event} - Estado de la batería: {round(battery_data[-1]['Battery'], 2)}%")
 
 def save_battery_data(battery_data):
     df = pd.DataFrame(battery_data)

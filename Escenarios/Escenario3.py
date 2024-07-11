@@ -1,41 +1,111 @@
-"""
-Codigo para obtencion de datos del escenario 3 altura con velocidades de elevacion diferentes de dron DJI Tello
-"""
-from djitellopy import Tello
+import tellopy
 import time
+import pandas as pd
+from datetime import datetime
 
-if __name__ == "__main__":
-    drone = Tello()
-    drone.connect()
-    print(f"Batería inicial: {drone.get_battery()}%")
+def main():
+    drone = None
+    battery_data = []
 
-    altura = 400
-    incremento = 50
-    pausas = [0.5, 1, 1.5, 2]  # Diferentes pausas para simular diferentes velocidades de ascenso
-    # Abrir archivo para escribir los resultados
-    with open("resultados_altura_y_consumo.txt", "w") as file:
-        file.write("Altura (cm), Pausa entre Incrementos (s), Consumo de batería antes (%), Consumo de batería después (%), Diferencia de batería (%)\n")
-        for pausa in pausas:
-            drone.takeoff()
-            time.sleep(2)  # Espera para estabilización después de despegar
-            consumo_inicial = drone.get_battery()
+    try:
+        # Crear una instancia del dron
+        drone = tellopy.Tello()
 
-            # Ascender en incrementos hasta alcanzar la altura objetivo
-            altura_actual = 0
-            while altura_actual < altura:
-                drone.send_rc_control(0, 0, 50, 0)  # Comando de ascenso
-                altura_actual += incremento
-                if altura_actual >= altura:
-                    drone.send_rc_control(0, 0, 0, 0)  # Estabilizar el dron en el aire
-                    break
-                time.sleep(pausa)  # Controlar la "velocidad" de ascenso ajustando la pausa
+        # Conectar al dron
+        drone.connect()
+        drone.wait_for_connection(60.0)
 
-            time.sleep(5)  # Estabilizar antes de medir
-            consumo_final = drone.get_battery()
-            diferencia_consumo = consumo_inicial - consumo_final
-            # Escribir resultados en el archivo
-            file.write(f"{altura}, {pausa}, {consumo_inicial}, {consumo_final}, {diferencia_consumo}\n")
+        # Despegar el dron
+        drone.takeoff()
 
-            drone.land()
-            time.sleep(2)  # Pausa entre cada ciclo de despegue y aterrizaje
-    print("Prueba completada y datos guardados.")
+        # Subir 2 metros
+        drone.up(50)  # Ajustar velocidad de ascenso según sea necesario
+        time.sleep(2)  # Esperar 2 segundos
+        drone.up(0)  # Detener el ascenso
+
+        # Suscribirse a eventos del dron para obtener datos de vuelo
+        drone.subscribe(drone.EVENT_FLIGHT_DATA, lambda event, sender, data, **args: handle_flight_data(event, sender, data, battery_data))
+
+        # Mantener la altura durante 1 segundo y tomar el primer dato de batería
+        time.sleep(1)
+        mark_battery('Manteniendo altura a 1m', battery_data)
+
+        # Iniciar movimiento a la izquierda
+        mark_battery('Inicia movimiento adelante(1m)', battery_data)
+        drone.forward(50)  # Ajustar velocidad según sea necesario
+        time.sleep(1)  # Moverse durante 1 metro
+        drone.forward(0)  # Detener el movimiento
+        mark_battery('Movimiento adelante', battery_data)
+
+        time.sleep(1)
+        mark_battery('Inicia movimiento derecha(1m)', battery_data)
+        drone.right(50)  # Ajustar velocidad según sea necesario
+        time.sleep(1)  # Moverse durante 1 metro
+        drone.right(0)  # Detener el movimiento
+        mark_battery('Movimiento derecha', battery_data)
+
+        # Mantener la posición durante 1 segundo
+        time.sleep(1)
+        # Iniciar movimiento a la derecha (20 metros)
+        mark_battery('Inicia movimiento atras(1m)', battery_data)
+        drone.backward(50)  # Ajustar velocidad según sea necesario
+        time.sleep(1)  # Moverse durante 1 metro
+        drone.backward(0)  # Detener el movimiento
+        mark_battery('Movimiento atras', battery_data)
+
+        # Mantener la posición durante 1 segundo
+        time.sleep(1)
+
+        mark_battery('Inicia movimiento izquierda(1m)', battery_data)
+        drone.left(50)  # Ajustar velocidad según sea necesario
+        time.sleep(1)  # Moverse durante 1 metro
+        drone.left(0)  # Detener el movimiento
+        mark_battery('Movimiento izquierda', battery_data)
+
+        mark_battery('Manteniendo altura a 1m', battery_data)
+        # Mantener la posición durante 1 segundo
+        time.sleep(1)
+
+        # Iniciar el descenso
+        mark_battery('Inicia descenso', battery_data)
+        drone.down(50)  # Ajustar velocidad de descenso según sea necesario
+        time.sleep(2)  # Esperar a que descienda
+        drone.down(0)  # Detener el descenso
+
+        # Aterrizar el dron
+        drone.land()
+
+    except Exception as e:
+        print(f"Ha ocurrido un error: {e}")
+    finally:
+        # Verificar si la instancia de drone fue creada antes de llamar a quit
+        if drone:
+            drone.quit()
+        
+        # Guardar los datos de la batería en un archivo Excel
+        save_battery_data(battery_data)
+
+def handle_flight_data(event, sender, data, battery_data):
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    battery_data.append({
+        'Time': current_time,
+        'Battery': round(data.battery_percentage, 2)  # Guardar con dos decimales
+    })
+    print(f"{current_time} - Estado de la batería: {round(data.battery_percentage, 2)}%")
+
+def mark_battery(event, battery_data):
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    battery_data.append({
+        'Time': current_time,
+        'Event': event,
+        'Battery': round(battery_data[-1]['Battery'], 2) if battery_data else 'Unknown'
+    })
+    print(f"{current_time} - {event} - Estado de la batería: {round(battery_data[-1]['Battery'], 2)}%")
+
+def save_battery_data(battery_data):
+    df = pd.DataFrame(battery_data)
+    df.to_excel('battery_data.xlsx', index=False)
+    print("Datos de batería guardados en battery_data.xlsx")
+
+if __name__ == '__main__':
+    main()
