@@ -1,4 +1,4 @@
-# autonomiaUAV
+# autonomia UAV
 
 Este proyecto está diseñado para analizar y predecir la autonomía de los vehículos aéreos no tripulados (UAV), enfocándose específicamente en el dron DJI Tello. Utilizando técnicas avanzadas de programación en Python, hemos desarrollado un sistema que permite un control total sobre el dron, facilitando la recopilación de datos críticos sobre su rendimiento en vuelo y el consumo de batería.
 
