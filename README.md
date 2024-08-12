@@ -17,7 +17,7 @@ El objetivo principal es desarrollar un modelo predictivo que pueda estimar con 
     - **Estado Estático:** El dron se eleva a 4 metros de altura y se mantiene en el aire por 5 minutos.
     - **Ruta Marcada:** El dron se eleva a 1 metro de altura, después realiza un recorrido en forma de cuadrado donde en cada uno de sus lados recorre 5 metros.
 4. **Modelos de Predicción:**
-    Contiene los modelos de predicción Regresión Lineal y Árbol de Decisión, así como la interfaz para que el usuario pueda obtener un valor de predicción.
+    Contiene los modelos de predicción Regresión Lineal y Árbol de Decisión, así como la interfaz para que el usuario pueda obtener un valor de predicción sobre el consumo de batería en función del desplazamiento que se planifique realizar. 
 5. **Prototipos:**
     Contiene los dos prototipos utilizados para realizar las pruebas con diferentes pesos, además de un diseño de propellers para el dron. Cabe resaltar que el filamento utilizado para imprimir cada uno de estos diseños es PLA. En los propellers se recomienda utilizar una impresora con alto grado de precisión.
 
